@@ -8,6 +8,51 @@ import {
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+const DEMO_USERS = {
+  client: { id: 3, organization_id: 1, email: "client@acme.demo", full_name: "Aarav Sharma", role: "client", phone: "+91 90000 00000", job_title: "Regional Manager", preferences: { seat: "aisle", hotel: "4-star", meal: "vegetarian" }, active: true },
+  agent: { id: 2, organization_id: null, email: "agent@voyageai.demo", full_name: "Travel Agent", role: "agent", phone: "", job_title: "Travel Consultant", preferences: {}, active: true },
+  admin: { id: 1, organization_id: null, email: "admin@voyageai.demo", full_name: "Platform Administrator", role: "admin", phone: "", job_title: "Administrator", preferences: {}, active: true },
+};
+
+function demoRead(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+}
+function demoWrite(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+  return value;
+}
+function demoApi(path, options = {}) {
+  const method = options.method || "GET";
+  const body = options.body ? JSON.parse(options.body) : {};
+  const requests = demoRead("voyage-demo-requests", []);
+  const organizations = demoRead("voyage-demo-organizations", [
+    { id: 1, name: "Acme Corporation", code: "ACME", billing_email: "billing@acme.demo", active: true, created_at: new Date().toISOString() },
+  ]);
+  if (path === "/api/travel/requests" && method === "GET") return Promise.resolve(requests);
+  if (path === "/api/travel/requests" && method === "POST") {
+    const item = { ...body, id: Date.now(), reference: `TRV-DEMO-${String(requests.length + 1).padStart(3, "0")}`, client_id: 3, assigned_agent_id: null, status: "submitted", details: body.details || {}, quote_amount: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    demoWrite("voyage-demo-requests", [item, ...requests]);
+    return Promise.resolve(item);
+  }
+  if (path.startsWith("/api/travel/requests/") && method === "PATCH") {
+    const id = Number(path.split("/")[4]);
+    const updated = requests.map(item => item.id === id ? { ...item, ...body, updated_at: new Date().toISOString() } : item);
+    demoWrite("voyage-demo-requests", updated);
+    return Promise.resolve(updated.find(item => item.id === id));
+  }
+  if (path === "/api/profile" && method === "PATCH") return Promise.resolve(body);
+  if (path === "/api/organizations" && method === "GET") return Promise.resolve(organizations);
+  if (path === "/api/organizations" && method === "POST") {
+    const item = { ...body, id: Date.now(), code: body.code.toUpperCase(), active: true, created_at: new Date().toISOString() };
+    demoWrite("voyage-demo-organizations", [item, ...organizations]);
+    return Promise.resolve(item);
+  }
+  if (path === "/api/users" && method === "POST") return Promise.resolve({ ...body, id: Date.now(), role: "client", active: true });
+  if (path === "/api/reports/summary") return Promise.resolve({ organizations: organizations.length, clients: 1, requests: requests.length, bookings: requests.filter(r => r.status === "booked").length, invoiced_revenue: 0, requests_by_status: {}, requests_by_service: {} });
+  if (path === "/api/bookings" || path === "/api/invoices") return Promise.resolve([]);
+  return Promise.resolve({});
+}
 const SERVICES = [
   { id: "flight", label: "Flights", icon: Plane, color: "#725cff" },
   { id: "hotel", label: "Hotels", icon: Hotel, color: "#ff725e" },
@@ -17,6 +62,7 @@ const SERVICES = [
 ];
 
 async function api(path, options = {}, token = "") {
+  if (DEMO_MODE) return demoApi(path, options);
   const headers = { ...(options.headers || {}) };
   if (!(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -35,12 +81,18 @@ function Login({ onLogin }) {
   const submit = async (event) => {
     event.preventDefault(); setBusy(true); setError("");
     try {
-      const body = new URLSearchParams({ username: email, password });
-      const response = await fetch(`${API}/api/auth/login`, {
-        method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail);
+      let data;
+      if (DEMO_MODE) {
+        const role = email.startsWith("admin") ? "admin" : email.startsWith("agent") ? "agent" : "client";
+        data = { access_token: `demo-${role}-token`, token_type: "bearer", user: DEMO_USERS[role] };
+      } else {
+        const body = new URLSearchParams({ username: email, password });
+        const response = await fetch(`${API}/api/auth/login`, {
+          method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body
+        });
+        data = await response.json();
+        if (!response.ok) throw new Error(data.detail);
+      }
       onLogin(data);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
