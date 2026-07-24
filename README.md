@@ -5,6 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=next.js)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?logo=postgresql)](https://www.postgresql.org/)
+[![Live demo](https://img.shields.io/badge/live_demo-online-2563eb)](https://voyageai-b2b-travel.atsdev7.chatgpt.site)
 
 VoyageAI is a full-stack B2B travel request, booking, payment, invoice, and
 reporting platform for corporate clients, travel agents, and administrators.
@@ -14,6 +15,20 @@ and an Expo/React Native mobile client.
 The application currently runs with deterministic demo travel inventory and
 sandbox payments. Its provider adapters are designed for approved flight,
 hotel, transport, event, and payment integrations.
+
+## Live deployment
+
+**Public demo:** [voyageai-b2b-travel.atsdev7.chatgpt.site](https://voyageai-b2b-travel.atsdev7.chatgpt.site)
+
+The hosted demo runs the Next.js client in browser-local demo mode. It is safe
+to explore with the [demo accounts](#demo-accounts): requests, profile changes,
+organizations, and users are stored only in that browser. The hosted demo does
+not process real payments or connect to live airline/hotel inventory.
+
+For a production installation, deploy the FastAPI API and PostgreSQL database,
+configure provider credentials, and point `NEXT_PUBLIC_API_URL` at the secured
+API. See [Deployment details](docs/DEPLOYMENT.md) for architecture, environment
+variables, verification, and release instructions.
 
 ![VoyageAI client dashboard](docs/screenshots/client-dashboard.png)
 
