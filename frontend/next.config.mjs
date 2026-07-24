@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
+  output: process.env.DEPLOY_STATIC_EXPORT === "true" ? "export" : "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
 };
